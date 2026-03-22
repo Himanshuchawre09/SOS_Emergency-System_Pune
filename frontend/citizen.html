@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>SOS Pune — Citizen Dashboard</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <div class="sb-logo">📡</div>
+      <div>
+        <h2>SOS Pune</h2>
+        <span>Citizen Portal</span>
+      </div>
+    </div>
+    <div class="sb-user">
+      <div class="sb-av"><i class="fa-solid fa-user"></i></div>
+      <div>
+        <div class="sb-uname" id="sb-name">—</div>
+        <div class="sb-urole">Citizen</div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-sec">Navigation</div>
+      <div class="nav-item active" data-page="sos"      onclick="navTo('sos',this)">      <i class="fa-solid fa-bell"></i>        SOS Dashboard</div>
+      <div class="nav-item"        data-page="map"      onclick="navTo('map',this);initMap()"><i class="fa-solid fa-map-location-dot"></i> My Location</div>
+      <div class="nav-item"        data-page="history"  onclick="navTo('history',this);loadHistory()"><i class="fa-solid fa-clock-rotate-left"></i> History</div>
+      <div class="sb-sec">Help</div>
+      <div class="nav-item"        data-page="contacts" onclick="navTo('contacts',this)">  <i class="fa-solid fa-phone"></i>       Emergency Contacts</div>
+    </nav>
+    <div class="sb-foot">
+      <button class="logout-btn" onclick="logout()">
+        <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN ═══ -->
+  <div class="main">
+    <header class="topbar">
+      <div class="tb-left">
+        <button onclick="document.getElementById('sidebar').classList.toggle('open')"
+                style="background:none;border:none;color:var(--txt2);font-size:1.05rem;cursor:pointer;padding:.15rem">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <span class="tb-title" id="tb-title">🆘 SOS Dashboard</span>
+      </div>
+      <div class="tb-right">
+        <span class="tb-clock" id="clock"></span>
+        <div class="live-ind"><span class="pulse"></span>LIVE</div>
+      </div>
+    </header>
+
+    <main class="page">
+
+      <!-- ══ SOS PAGE ══ -->
+      <div id="page-sos" class="pg active">
+
+        <!-- Active SOS Banner (hidden until SOS sent) -->
+        <div id="active-banner" class="active-banner" style="display:none">
+          <div style="display:flex;align-items:center;gap:.7rem">
+            <span class="pulse" style="width:11px;height:11px;background:var(--red)"></span>
+            <div>
+              <div style="font-family:var(--ff-head);font-weight:700;font-size:.95rem" id="banner-type">SOS Active</div>
+              <div style="font-size:.72rem;color:var(--txt2)" id="banner-time"></div>
+            </div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="cancelSOS()">
+            <i class="fa-solid fa-xmark"></i> Cancel SOS
+          </button>
+        </div>
+
+        <!-- SOS Buttons -->
+        <div style="font-size:.68rem;color:var(--txt2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem">
+          — Tap your emergency type —
+        </div>
+        <div class="sos-grid">
+          <button class="sos-btn sos-fire"     onclick="triggerSOS('fire',this)">
+            <span class="sos-em">🔥</span>
+            <span class="sos-lbl">Fire</span>
+            <span class="sos-sub">Tap to Alert</span>
+          </button>
+          <button class="sos-btn sos-accident" onclick="triggerSOS('accident',this)">
+            <span class="sos-em">🚗</span>
+            <span class="sos-lbl">Accident</span>
+            <span class="sos-sub">Road / Crash</span>
+          </button>
+          <button class="sos-btn sos-flood"    onclick="triggerSOS('flood',this)">
+            <span class="sos-em">🌊</span>
+            <span class="sos-lbl">Flood</span>
+            <span class="sos-sub">Water / Surge</span>
+          </button>
+          <button class="sos-btn sos-medical"  onclick="triggerSOS('medical',this)">
+            <span class="sos-em">🏥</span>
+            <span class="sos-lbl">Medical</span>
+            <span class="sos-sub">Health / Other</span>
+          </button>
+        </div>
+
+        <!-- Location Bar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;background:var(--bg2);border:1px solid var(--brd);border-radius:var(--rad);padding:.8rem 1rem;margin-bottom:1.1rem">
+          <div style="display:flex;align-items:center;gap:.65rem">
+            <i class="fa-solid fa-location-crosshairs" style="color:var(--blue);font-size:1rem"></i>
+            <div>
+              <div id="loc-label" style="font-size:.82rem;color:var(--txt2)">Fetching GPS location...</div>
+              <div id="loc-coords" style="font-size:.7rem;color:var(--txt3);margin-top:1px"></div>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="refreshGPS()">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+
+        <!-- Incident Status Card -->
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-flag" style="color:var(--blue)"></i> Incident Status</div>
+
+          <!-- No incident state -->
+          <div id="no-incident" style="text-align:center;padding:1.4rem 0;color:var(--txt2);font-size:.84rem">
+            <i class="fa-regular fa-circle-check" style="font-size:1.8rem;color:var(--green);display:block;margin-bottom:.5rem"></i>
+            No active incident. You are safe.
+          </div>
+
+          <!-- Incident details (shown when SOS active) -->
+          <div id="inc-details" style="display:none">
+            <div class="sr"><span class="sr-k">Call ID</span>       <span class="sr-v" id="s-callid">—</span></div>
+            <div class="sr"><span class="sr-k">Type</span>          <span id="s-type">—</span></div>
+            <div class="sr"><span class="sr-k">Call Status</span>   <span id="s-callstatus">—</span></div>
+            <div class="sr"><span class="sr-k">Incident Status</span><span id="s-incstatus">—</span></div>
+            <div class="sr"><span class="sr-k">Assigned Team</span> <span class="sr-v" id="s-team">—</span></div>
+            <div class="sr"><span class="sr-k">Reported At</span>   <span class="sr-v" id="s-time">—</span></div>
+          </div>
+        </div>
+
+      </div><!-- /page-sos -->
+
+      <!-- ══ MAP PAGE ══ -->
+      <div id="page-map" class="pg">
+        <div class="card" style="margin-bottom:1rem">
+          <div class="card-title"><i class="fa-solid fa-map" style="color:var(--blue)"></i> Live Location — Pune</div>
+          <div class="map-box tall" id="user-map-wrap">
+            <div id="user-map" style="height:100%;width:100%"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem;margin-top:.75rem;flex-wrap:wrap;font-size:.78rem;color:var(--txt2)">
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--blue);margin-right:.3rem"></span>Your Location</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--red);margin-right:.3rem"></span>SOS Sent</span>
+            <button class="btn btn-primary btn-sm" onclick="centerMap()" style="margin-left:auto">
+              <i class="fa-solid fa-crosshairs"></i> Center
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ HISTORY PAGE ══ -->
+      <div id="page-history" class="pg">
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-list"></i> My SOS History</div>
+          <div class="tw">
+            <table class="dt">
+              <thead>
+                <tr>
+                  <th>ID</th><th>Type</th><th>Call Status</th>
+                  <th>Incident</th><th>Location</th><th>Reported</th>
+                </tr>
+              </thead>
+              <tbody id="history-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ CONTACTS PAGE ══ -->
+      <div id="page-contacts" class="pg">
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-phone" style="color:var(--green)"></i> Pune Emergency Numbers</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem;margin-bottom:1rem">
+            <div style="text-align:center;padding:1.2rem .8rem;background:var(--red-l);border-radius:var(--rad);border:1px solid rgba(244,63,94,.2)">
+              <div style="font-size:1.6rem;margin-bottom:.4rem">🚒</div>
+              <div style="font-family:var(--ff-head);font-size:1.4rem;font-weight:800;color:var(--red)">101</div>
+              <div style="font-size:.68rem;color:var(--txt2);text-transform:uppercase;letter-spacing:.08em">Fire</div>
+            </div>
+            <div style="text-align:center;padding:1.2rem .8rem;background:var(--blue-l);border-radius:var(--rad);border:1px solid rgba(56,189,248,.2)">
+              <div style="font-size:1.6rem;margin-bottom:.4rem">🚓</div>
+              <div style="font-family:var(--ff-head);font-size:1.4rem;font-weight:800;color:var(--blue)">100</div>
+              <div style="font-size:.68rem;color:var(--txt2);text-transform:uppercase;letter-spacing:.08em">Police</div>
+            </div>
+            <div style="text-align:center;padding:1.2rem .8rem;background:var(--green-l);border-radius:var(--rad);border:1px solid rgba(52,211,153,.2)">
+              <div style="font-size:1.6rem;margin-bottom:.4rem">🚑</div>
+              <div style="font-family:var(--ff-head);font-size:1.4rem;font-weight:800;color:var(--green)">108</div>
+              <div style="font-size:.68rem;color:var(--txt2);text-transform:uppercase;letter-spacing:.08em">Ambulance</div>
+            </div>
+          </div>
+          <div style="padding:.8rem;background:var(--bg3);border-radius:var(--rad);font-size:.82rem;color:var(--txt2);line-height:1.6">
+            <i class="fa-solid fa-circle-info" style="color:var(--blue);margin-right:5px"></i>
+            Pune Fire Brigade: <strong style="color:var(--txt)">020-25506666</strong> &nbsp;·&nbsp;
+            NDRF Pune: <strong style="color:var(--txt)">1070</strong> &nbsp;·&nbsp;
+            Disaster Mgmt: <strong style="color:var(--txt)">020-26128000</strong>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div><!-- /.main -->
+</div><!-- /.layout -->
+
+<!-- SOS Confirm Modal -->
+<div class="modal-bg" id="sos-modal">
+  <div class="modal">
+    <div class="modal-hd">
+      <span class="modal-ht" id="modal-sos-title">Confirm SOS Alert</span>
+      <button class="modal-x" onclick="closeModal('sos-modal')">&times;</button>
+    </div>
+    <p style="color:var(--txt2);font-size:.86rem;margin-bottom:1rem">
+      Sending <strong id="modal-sos-type" style="color:var(--txt)">emergency</strong> alert
+      to Pune control room. Only send in a real emergency.
+    </p>
+    <div style="background:var(--amber-l);border:1px solid rgba(251,146,60,.25);border-radius:var(--rad);padding:.8rem;font-size:.83rem;margin-bottom:1rem">
+      <i class="fa-solid fa-location-dot" style="color:var(--amber);margin-right:5px"></i>
+      <span id="modal-loc">Fetching location...</span>
+    </div>
+    <div style="font-size:.74rem;color:var(--txt3)">
+      False alarms waste rescue resources. Only use in genuine emergencies.
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="closeModal('sos-modal')">Cancel</button>
+      <button class="btn btn-danger" id="sos-confirm-btn" onclick="confirmSOS()">
+        <i class="fa-solid fa-paper-plane"></i> Send SOS
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<script src="js/app.js"></script>
+<script src="js/citizen.js"></script>
+</body>
+</html>

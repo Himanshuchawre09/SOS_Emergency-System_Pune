@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>SOS Pune — Register</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    .pw-strength { height:4px; border-radius:2px; margin-top:.4rem; background:var(--brd2); overflow:hidden }
+    .pw-strength-bar { height:100%; border-radius:2px; width:0%; transition:width .3s,background .3s }
+    .pw-hint { font-size:.68rem; color:var(--txt3); margin-top:.3rem }
+    .back-link { display:inline-flex; align-items:center; gap:.4rem; color:var(--txt2); font-size:.8rem; margin-bottom:1.4rem; text-decoration:none; transition:color var(--t) }
+    .back-link:hover { color:var(--blue) }
+    .field-valid   { border-color:var(--green) !important }
+    .field-invalid { border-color:var(--red)   !important }
+    .debug-box { background:#1a1a2e; border:1px solid #f43f5e44; border-radius:8px; padding:.8rem; margin-top:.8rem; font-size:.72rem; color:#94a3b8; font-family:monospace; display:none }
+  </style>
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-box" style="max-width:460px">
+
+    <a href="index.html" class="back-link">
+      <i class="fa-solid fa-arrow-left"></i> Back to Login
+    </a>
+
+    <div class="auth-brand">
+      <div class="auth-logo">📡</div>
+      <div class="auth-brand-text">
+        <h1>Create Account</h1>
+        <p>Pune Emergency Response System</p>
+      </div>
+    </div>
+
+    <!-- Error box -->
+    <div id="err" class="alert alert-error hidden">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <span id="err-msg"></span>
+    </div>
+
+    <!-- Success box -->
+    <div id="success-box" class="alert alert-success hidden">
+      <i class="fa-solid fa-circle-check"></i>
+      <span id="success-msg"></span>
+    </div>
+
+    <!-- Debug info (shown on error) -->
+    <div class="debug-box" id="debug-box">
+      <strong style="color:#f43f5e">Debug info:</strong><br/>
+      <span id="debug-msg"></span>
+    </div>
+
+    <!-- Full Name -->
+    <div class="fg">
+      <label>Full Name <span style="color:var(--red)">*</span></label>
+      <input type="text" class="fc" id="reg-name"
+             placeholder="Enter your full name"
+             autocomplete="name"
+             oninput="validateName()"
+             onkeydown="if(event.key==='Enter')doRegister()"/>
+      <div id="name-hint" class="pw-hint"></div>
+    </div>
+
+    <!-- Phone -->
+    <div class="fg">
+      <label>Mobile Number <span style="color:var(--red)">*</span></label>
+      <div style="position:relative">
+        <span style="position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--txt2);font-size:.85rem;pointer-events:none">+91</span>
+        <input type="tel" class="fc" id="reg-phone"
+               placeholder="10-digit mobile number"
+               style="padding-left:3rem" maxlength="10"
+               autocomplete="tel"
+               oninput="validatePhone()"
+               onkeydown="if(event.key==='Enter')doRegister()"/>
+      </div>
+      <div id="phone-hint" class="pw-hint"></div>
+    </div>
+
+    <!-- Password -->
+    <div class="fg">
+      <label>Password <span style="color:var(--red)">*</span></label>
+      <div style="position:relative">
+        <input type="password" class="fc" id="reg-pass"
+               placeholder="Minimum 6 characters"
+               style="padding-right:2.5rem" autocomplete="new-password"
+               oninput="checkStrength()"
+               onkeydown="if(event.key==='Enter')doRegister()"/>
+        <button onclick="togglePwd('reg-pass','eye1')"
+                style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--txt2);cursor:pointer">
+          <i class="fa-solid fa-eye" id="eye1"></i>
+        </button>
+      </div>
+      <div class="pw-strength"><div class="pw-strength-bar" id="strength-bar"></div></div>
+      <div id="strength-label" class="pw-hint">Enter a password</div>
+    </div>
+
+    <!-- Confirm Password -->
+    <div class="fg">
+      <label>Confirm Password <span style="color:var(--red)">*</span></label>
+      <div style="position:relative">
+        <input type="password" class="fc" id="reg-confirm"
+               placeholder="Re-enter your password"
+               style="padding-right:2.5rem" autocomplete="new-password"
+               oninput="checkConfirm()"
+               onkeydown="if(event.key==='Enter')doRegister()"/>
+        <button onclick="togglePwd('reg-confirm','eye2')"
+                style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--txt2);cursor:pointer">
+          <i class="fa-solid fa-eye" id="eye2"></i>
+        </button>
+      </div>
+      <div id="confirm-hint" class="pw-hint"></div>
+    </div>
+
+    <!-- Submit -->
+    <button class="btn btn-success btn-block btn-lg" id="reg-btn"
+            onclick="doRegister()" style="margin-top:.6rem">
+      <i class="fa-solid fa-user-plus"></i> Create Account
+    </button>
+
+    <div style="text-align:center;margin-top:1rem;font-size:.82rem;color:var(--txt2)">
+      Already have an account?
+      <a href="index.html" style="color:var(--blue);font-weight:600;text-decoration:none">Sign In</a>
+    </div>
+
+    <div style="text-align:center;margin-top:1.2rem;font-size:.65rem;color:var(--txt3);letter-spacing:.1em;text-transform:uppercase">
+      Pune Emergency Response System &middot; 2026
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+'use strict';
+
+// ── API URL — RELATIVE path, works on any localhost port ──
+// No hardcoded http://localhost — no CORS issues
+const REGISTER_URL = '../backend/api_register.php';
+const AUTH_URL     = '../backend/api_auth.php';
+
+// ── Redirect if already logged in ─────────────────────────
+(async function() {
+  try {
+    const r = await fetch(AUTH_URL + '?action=check', { method: 'GET' });
+    const d = await r.json();
+    if (d.success && d.data) {
+      window.location.href = d.data.role === 'admin' ? 'admin.html' : 'citizen.html';
+    }
+  } catch (e) { /* not logged in */ }
+})();
+
+// ── Validation ────────────────────────────────────────────
+function setField(inputId, hintId, ok, msg) {
+  const inp  = document.getElementById(inputId);
+  const hint = document.getElementById(hintId);
+  inp.classList.toggle('field-valid',   ok  && msg !== '');
+  inp.classList.toggle('field-invalid', !ok && msg !== '');
+  if (hint) {
+    hint.textContent = msg;
+    hint.style.color = ok ? 'var(--green)' : 'var(--red)';
+  }
+}
+
+function validateName() {
+  const v = document.getElementById('reg-name').value.trim();
+  if (!v)            setField('reg-name','name-hint', false, '');
+  else if (v.length < 2) setField('reg-name','name-hint', false, 'Name must be at least 2 characters');
+  else               setField('reg-name','name-hint', true,  '✓ Looks good');
+}
+
+function validatePhone() {
+  // Strip non-digits
+  const el = document.getElementById('reg-phone');
+  el.value = el.value.replace(/\D/g,'');
+  const v  = el.value;
+  if (!v)                      setField('reg-phone','phone-hint', false, '');
+  else if (!/^[6-9]\d{9}$/.test(v)) setField('reg-phone','phone-hint', false, 'Enter a valid 10-digit Indian mobile number');
+  else                         setField('reg-phone','phone-hint', true,  '✓ Valid mobile number');
+}
+
+function checkStrength() {
+  const p   = document.getElementById('reg-pass').value;
+  const bar = document.getElementById('strength-bar');
+  const lbl = document.getElementById('strength-label');
+  if (!p) { bar.style.width='0%'; lbl.textContent='Enter a password'; lbl.style.color='var(--txt3)'; return; }
+  let s = 0;
+  if (p.length >= 6)           s++;
+  if (p.length >= 10)          s++;
+  if (/[A-Z]/.test(p))         s++;
+  if (/[0-9]/.test(p))         s++;
+  if (/[^A-Za-z0-9]/.test(p)) s++;
+  const lvls=[
+    {pct:'20%',color:'var(--red)',   text:'Very weak'},
+    {pct:'40%',color:'#f97316',      text:'Weak'},
+    {pct:'60%',color:'var(--amber)', text:'Fair'},
+    {pct:'80%',color:'#84cc16',      text:'Strong'},
+    {pct:'100%',color:'var(--green)',text:'Very strong'},
+  ];
+  const l = lvls[Math.min(s-1,4)] || lvls[0];
+  bar.style.width=l.pct; bar.style.background=l.color;
+  lbl.textContent=l.text; lbl.style.color=l.color;
+  if (document.getElementById('reg-confirm').value) checkConfirm();
+}
+
+function checkConfirm() {
+  const p = document.getElementById('reg-pass').value;
+  const c = document.getElementById('reg-confirm').value;
+  if (!c) { setField('reg-confirm','confirm-hint',false,''); return; }
+  p===c ? setField('reg-confirm','confirm-hint',true,'✓ Passwords match')
+        : setField('reg-confirm','confirm-hint',false,'Passwords do not match');
+}
+
+function togglePwd(inp, ico) {
+  const i=document.getElementById(inp), ic=document.getElementById(ico);
+  i.type = i.type==='password' ? 'text' : 'password';
+  ic.className = i.type==='password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+}
+
+// ── Submit ─────────────────────────────────────────────────
+async function doRegister() {
+  const name    = document.getElementById('reg-name').value.trim();
+  const phone   = document.getElementById('reg-phone').value.trim();
+  const pass    = document.getElementById('reg-pass').value;
+  const confirm = document.getElementById('reg-confirm').value;
+
+  hideMessages();
+
+  // Client-side checks
+  if (!name)           { showErr('Full name is required.');                          return; }
+  if (name.length < 2) { showErr('Name must be at least 2 characters.');             return; }
+  if (!phone)          { showErr('Phone number is required.');                       return; }
+  if (!/^[6-9]\d{9}$/.test(phone)) { showErr('Enter a valid 10-digit Indian mobile number.'); return; }
+  if (!pass)           { showErr('Password is required.');                           return; }
+  if (pass.length < 6) { showErr('Password must be at least 6 characters.');        return; }
+  if (pass !== confirm){ showErr('Passwords do not match.');                         return; }
+
+  const btn = document.getElementById('reg-btn');
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating account...';
+  btn.disabled  = true;
+
+  try {
+    // POST to relative URL — no CORS, no hardcoded host
+    const response = await fetch(REGISTER_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name, phone, password: pass, confirm_password: confirm }),
+    });
+
+    // Try to parse JSON regardless of HTTP status
+    let data;
+    const text = await response.text();
+    try {
+      data = JSON.parse(text);
+    } catch (parseErr) {
+      // PHP returned HTML error (e.g. syntax error) — show it
+      showErr('Server returned an unexpected response. Check PHP error logs.');
+      showDebug('HTTP ' + response.status + '\nResponse: ' + text.substring(0, 300));
+      return;
+    }
+
+    if (data.success && data.data) {
+      document.getElementById('success-msg').textContent =
+        'Account created! Redirecting to your dashboard...';
+      document.getElementById('success-box').classList.remove('hidden');
+      setTimeout(() => { window.location.href = 'citizen.html'; }, 1200);
+    } else {
+      showErr(data.error || 'Registration failed. Please try again.');
+    }
+
+  } catch (networkErr) {
+    // This only fires if the server is completely unreachable
+    showErr('Cannot reach server. Is XAMPP running?');
+    showDebug(
+      'URL tried: ' + REGISTER_URL + '\n' +
+      'Error: ' + networkErr.message + '\n\n' +
+      'Fix:\n' +
+      '1. Make sure XAMPP Apache is running (green in XAMPP panel)\n' +
+      '2. Make sure files are in C:\\xampp\\htdocs\\sos_project\\\n' +
+      '3. Open: http://localhost/sos_project/backend/test.php'
+    );
+  } finally {
+    btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Create Account';
+    btn.disabled  = false;
+  }
+}
+
+function showErr(msg) {
+  document.getElementById('err-msg').textContent = msg;
+  document.getElementById('err').classList.remove('hidden');
+}
+
+function showDebug(msg) {
+  document.getElementById('debug-msg').textContent = msg;
+  document.getElementById('debug-box').style.display = 'block';
+}
+
+function hideMessages() {
+  document.getElementById('err').classList.add('hidden');
+  document.getElementById('success-box').classList.add('hidden');
+  document.getElementById('debug-box').style.display = 'none';
+}
+</script>
+</body>
+</html>

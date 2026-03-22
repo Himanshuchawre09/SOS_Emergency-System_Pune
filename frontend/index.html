@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>SOS Pune — Login</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    .divider { display:flex;align-items:center;gap:.75rem;margin:1rem 0;color:var(--txt3);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase }
+    .divider::before,.divider::after { content:'';flex:1;height:1px;background:var(--brd) }
+    .register-link { display:block;text-align:center;padding:.6rem 1rem;border-radius:var(--rad);border:1px solid var(--brd2);color:var(--txt2);font-family:var(--ff-head);font-size:.9rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;transition:all var(--t);text-decoration:none }
+    .register-link:hover { border-color:var(--blue);color:var(--blue);background:var(--blue-l) }
+    .debug-box { background:#1a1a2e;border:1px solid #f43f5e44;border-radius:8px;padding:.8rem;margin-top:.8rem;font-size:.72rem;color:#94a3b8;font-family:monospace;display:none;white-space:pre-wrap }
+  </style>
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-box">
+
+    <div class="auth-brand">
+      <div class="auth-logo">📡</div>
+      <div class="auth-brand-text">
+        <h1>SOS Response System</h1>
+        <p>Pune Emergency Control</p>
+      </div>
+    </div>
+
+    <!-- Role Tabs -->
+    <div class="role-tabs">
+      <button class="role-tab user-tab active" id="tab-citizen" onclick="setRole('user',this)">
+        <i class="fa-solid fa-user"></i> Citizen
+      </button>
+      <button class="role-tab admin-tab" id="tab-admin" onclick="setRole('admin',this)">
+        <i class="fa-solid fa-shield-halved"></i> Admin
+      </button>
+    </div>
+
+    <!-- Error -->
+    <div id="err" class="alert alert-error hidden">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <span id="err-msg"></span>
+    </div>
+
+    <!-- Debug -->
+    <div class="debug-box" id="debug-box"></div>
+
+    <!-- Phone -->
+    <div class="fg">
+      <label id="lbl-phone">Phone Number</label>
+      <input type="tel" class="fc" id="phone"
+             placeholder="Enter your 10-digit phone"
+             autocomplete="username" maxlength="15"
+             onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+
+    <!-- Password -->
+    <div class="fg">
+      <label>Password</label>
+      <div style="position:relative">
+        <input type="password" class="fc" id="pass"
+               placeholder="Enter your password"
+               style="padding-right:2.5rem"
+               autocomplete="current-password"
+               onkeydown="if(event.key==='Enter')doLogin()"/>
+        <button onclick="togglePwd()"
+                style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--txt2);cursor:pointer">
+          <i class="fa-solid fa-eye" id="eye"></i>
+        </button>
+      </div>
+    </div>
+
+    <input type="hidden" id="role-val" value="user"/>
+
+    <button class="btn btn-primary btn-block btn-lg" id="login-btn" onclick="doLogin()">
+      <i class="fa-solid fa-right-to-bracket"></i> Sign In
+    </button>
+
+    <!-- Register link (citizen only) -->
+    <div id="register-section">
+      <div class="divider">or</div>
+      <a href="register.html" class="register-link">
+        <i class="fa-solid fa-user-plus"></i> New here? Create an Account
+      </a>
+    </div>
+
+    <div style="text-align:center;margin-top:1.2rem;font-size:.65rem;color:var(--txt3);letter-spacing:.1em;text-transform:uppercase">
+      Pune Emergency Response System &middot; 2026
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<script>
+'use strict';
+
+// Relative URLs — no CORS, works on any port
+const AUTH_URL = '../backend/api_auth.php';
+
+// Check if already logged in
+(async function() {
+  try {
+    const r = await fetch(AUTH_URL + '?action=check');
+    const d = await r.json();
+    if (d.success && d.data) {
+      window.location.href = d.data.role === 'admin' ? 'admin.html' : 'citizen.html';
+    }
+  } catch (e) {}
+})();
+
+let _role = 'user';
+
+function setRole(role, btn) {
+  _role = role;
+  document.querySelectorAll('.role-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('role-val').value = role;
+  // Show register only for citizens; admins are pre-created
+  document.getElementById('register-section').style.display = role === 'user' ? 'block' : 'none';
+  document.getElementById('lbl-phone').textContent = role === 'admin' ? 'Admin Phone Number' : 'Phone Number';
+  // Clear fields on tab switch
+  document.getElementById('phone').value = '';
+  document.getElementById('pass').value  = '';
+  document.getElementById('err').classList.add('hidden');
+  document.getElementById('debug-box').style.display = 'none';
+}
+
+function togglePwd() {
+  const i=document.getElementById('pass'), ic=document.getElementById('eye');
+  i.type = i.type==='password'?'text':'password';
+  ic.className = i.type==='password'?'fa-solid fa-eye':'fa-solid fa-eye-slash';
+}
+
+async function doLogin() {
+  const phone = document.getElementById('phone').value.trim();
+  const pass  = document.getElementById('pass').value;
+
+  document.getElementById('err').classList.add('hidden');
+  document.getElementById('debug-box').style.display = 'none';
+
+  if (!phone) { showErr('Please enter your phone number.'); return; }
+  if (!pass)  { showErr('Please enter your password.');     return; }
+
+  const btn = document.getElementById('login-btn');
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Signing in...';
+  btn.disabled  = true;
+
+  try {
+    const response = await fetch(AUTH_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ action:'login', phone, password:pass, role:_role }),
+    });
+
+    let data;
+    const text = await response.text();
+    try { data = JSON.parse(text); }
+    catch (e) {
+      showErr('Server error. Check PHP is running correctly.');
+      document.getElementById('debug-box').textContent = 'Response: ' + text.substring(0,400);
+      document.getElementById('debug-box').style.display = 'block';
+      return;
+    }
+
+    if (data.success && data.data) {
+      window.location.href = data.data.role === 'admin' ? 'admin.html' : 'citizen.html';
+    } else {
+      showErr(data.error || 'Login failed. Check your credentials.');
+    }
+  } catch (e) {
+    showErr('Cannot reach server. Make sure XAMPP Apache is running.');
+    document.getElementById('debug-box').textContent =
+      'URL: ' + AUTH_URL + '\nError: ' + e.message +
+      '\n\nFix: Open XAMPP → Start Apache → Start MySQL';
+    document.getElementById('debug-box').style.display = 'block';
+  } finally {
+    btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Sign In';
+    btn.disabled  = false;
+  }
+}
+
+function showErr(msg) {
+  document.getElementById('err-msg').textContent = msg;
+  document.getElementById('err').classList.remove('hidden');
+}
+</script>
+</body>
+</html>
